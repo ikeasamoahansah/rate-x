@@ -1,17 +1,14 @@
-from typing import Dict, Any, Callable
+import asyncio
+from functools import wraps
 from time import time
-
+from typing import Dict, Any, Callable
 
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-import asyncio
-from functools import wraps
-
-from ..core.request import RateLimitRequest
-
 from ..algorithms.base import RateLimitingAlgorithm
+from ..core.request import RateLimitRequest
 
 
 class HTTPRateLimiter(BaseHTTPMiddleware):

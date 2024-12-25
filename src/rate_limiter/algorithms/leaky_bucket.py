@@ -1,6 +1,6 @@
+import asyncio
 from collections import deque
 from time import time
-import asyncio
 from typing import Dict, Any, Optional
 
 from src.rate_limiter.algorithms.base import RateLimitingAlgorithm
