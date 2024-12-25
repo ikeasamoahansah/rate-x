@@ -11,7 +11,7 @@ from src.rate_limiter.core.response import RateLimitResponse
 class LeakyBucketAlgorithm(RateLimitingAlgorithm):
     def __init__(self, bucket_size: int, leak_rate: float):
         """
-        Initialize the leaky bucket algorithm
+        Initialize leaky bucket algorithm
 
         Args:
             bucket_size: Maximum number of requests the bucket can hold
@@ -80,13 +80,14 @@ class LeakyBucketAlgorithm(RateLimitingAlgorithm):
                 headers = {
                     "X-RateLimit-Limit": str(self.bucket_size),
                     "X-RateLimit-Remaining": str(self.bucket_size - current_size - 1),
-                    "X-RateLimit-Reset": str(int(current_time + (current_size + 1) * self.processing_interval))
+                    "X-RateLimit-Reset": str(
+                        int(
+                            current_time + (current_size + 1) * self.processing_interval
+                        )
+                    ),
                 }
 
-                return RateLimitResponse(
-                    is_allowed=True,
-                    headers=headers
-                )
+                return RateLimitResponse(is_allowed=True, headers=headers)
             else:
                 self.rejected_requests += 1
 
@@ -96,13 +97,11 @@ class LeakyBucketAlgorithm(RateLimitingAlgorithm):
                     "X-RateLimit-Limit": str(self.bucket_size),
                     "X-RateLimit-Remaining": "0",
                     "X-RateLimit-Reset": str(int(current_time + retry_after)),
-                    "Retry-After": str(retry_after)
+                    "Retry-After": str(retry_after),
                 }
 
                 return RateLimitResponse(
-                    is_allowed=False,
-                    headers=headers,
-                    retry_after=retry_after
+                    is_allowed=False, headers=headers, retry_after=retry_after
                 )
 
     async def get_status(self) -> Dict[str, Any]:
@@ -124,11 +123,11 @@ class LeakyBucketAlgorithm(RateLimitingAlgorithm):
                 "config": {
                     "bucket_size": self.bucket_size,
                     "leak_rate": self.leak_rate,
-                    "processing_interval": self.processing_interval
+                    "processing_interval": self.processing_interval,
                 },
                 "current_state": {
                     "current_size": current_size,
-                    "utilization": current_size / self.bucket_size
+                    "utilization": current_size / self.bucket_size,
                 },
                 "metrics": {
                     "total_requests": self.total_requests,
@@ -139,6 +138,6 @@ class LeakyBucketAlgorithm(RateLimitingAlgorithm):
                         if self.total_requests > 0
                         else 0
                     ),
-                    "avg_processing_time": avg_processing_time
-                }
+                    "avg_processing_time": avg_processing_time,
+                },
             }

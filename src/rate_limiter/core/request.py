@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, Any
-from time import time
+
 
 @dataclass
 class RateLimitRequest:

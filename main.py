@@ -12,6 +12,7 @@ app = FastAPI()
 limiter = LeakyBucketAlgorithm(bucket_size=5, leak_rate=1)
 app.add_middleware(HTTPRateLimiter, algorithm=limiter)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await limiter.start()
