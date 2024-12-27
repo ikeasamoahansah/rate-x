@@ -1,40 +1,34 @@
-from typing import Optional, Dict, Any, Callable, Awaitable, Union
-from dataclasses import dataclass
-from time import time
-
-import threading
-
-from fastapi import FastAPI, Request, Response
-from fastapi.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
-
 import asyncio
 from functools import wraps
+from time import time
+from typing import Dict, Any, Callable
 
-from ..core.request import RateLimitRequest
-from ..core.response import RateLimitResponse
+from fastapi import FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from ..algorithms.base import RateLimitingAlgorithm
+from ..core.request import RateLimitRequest
 
 
 class HTTPRateLimiter(BaseHTTPMiddleware):
     """FastAPI middleware for rate limiting"""
-    
+
     def __init__(
         self,
         app: FastAPI,
         algorithm: RateLimitingAlgorithm,
         status_code: int = 429,
-        error_message: str = "Too Many Requests"
+        error_message: str = "Too Many Requests",
     ):
         super().__init__(app)
         self.algorithm = algorithm
         self.status_code = status_code
         self.error_message = error_message
         self.stats = {
-            'total_requests': 0,
-            'allowed_requests': 0,
-            'rejected_requests': 0
+            "total_requests": 0,
+            "allowed_requests": 0,
+            "rejected_requests": 0,
         }
         self._lock = asyncio.Lock()
 
@@ -48,16 +42,11 @@ class HTTPRateLimiter(BaseHTTPMiddleware):
     async def get_stats(self) -> Dict[str, Any]:
         """Get rate limiter statistics"""
         async with self._lock:
-            return {
-                **self.stats,
-                'algorithm_status': await self.algorithm.get_status()
-            }
+            return {**self.stats, "algorithm_status": await self.algorithm.get_status()}
 
-    async def dispatch(
-        self, request: Request, call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process each request through the rate limiter"""
-        
+
         # Create rate limit request object
         rate_limit_request = RateLimitRequest(
             id=self.get_request_identifier(request),
@@ -66,14 +55,14 @@ class HTTPRateLimiter(BaseHTTPMiddleware):
             path=request.url.path,
             method=request.method,
             metadata={
-                'headers': dict(request.headers),
-                'query_params': dict(request.query_params)
-            }
+                "headers": dict(request.headers),
+                "query_params": dict(request.query_params),
+            },
         )
 
         # Update stats
         async with self._lock:
-            self.stats['total_requests'] += 1
+            self.stats["total_requests"] += 1
 
         # Check if request is allowed
         rate_limit_response = await self.algorithm.allow_request(rate_limit_request)
@@ -81,7 +70,7 @@ class HTTPRateLimiter(BaseHTTPMiddleware):
         if rate_limit_response.is_allowed:
             # Update stats
             async with self._lock:
-                self.stats['allowed_requests'] += 1
+                self.stats["allowed_requests"] += 1
 
             # Process the request
             response = await call_next(request)
@@ -94,18 +83,19 @@ class HTTPRateLimiter(BaseHTTPMiddleware):
         else:
             # Update stats
             async with self._lock:
-                self.stats['rejected_requests'] += 1
+                self.stats["rejected_requests"] += 1
 
             # Create error response
             headers = rate_limit_response.headers
             if rate_limit_response.retry_after:
-                headers['Retry-After'] = str(rate_limit_response.retry_after)
+                headers["Retry-After"] = str(rate_limit_response.retry_after)
 
             return JSONResponse(
                 status_code=self.status_code,
                 content={"error": self.error_message},
-                headers=headers
+                headers=headers,
             )
+
 
 def rate_limit(algorithm: RateLimitingAlgorithm):
     """
@@ -116,10 +106,11 @@ def rate_limit(algorithm: RateLimitingAlgorithm):
         async def endpoint():
             return {"message": "Hello World"}
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            request = kwargs.get('request') or args[0]
+            request = kwargs.get("request") or args[0]
             if not isinstance(request, Request):
                 raise ValueError("No request object found")
 
@@ -128,21 +119,23 @@ def rate_limit(algorithm: RateLimitingAlgorithm):
                 timestamp=time(),
                 client_ip=request.client.host,
                 path=request.url.path,
-                method=request.method
+                method=request.method,
             )
 
             response = await algorithm.allow_request(rate_limit_request)
             if not response.is_allowed:
                 headers = response.headers
                 if response.retry_after:
-                    headers['Retry-After'] = str(response.retry_after)
-                    
+                    headers["Retry-After"] = str(response.retry_after)
+
                 return JSONResponse(
                     status_code=429,
                     content={"error": "Too Many Requests"},
-                    headers=headers
+                    headers=headers,
                 )
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
